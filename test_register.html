@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试注册页面</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .register-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 24px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #666;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+        
+        .email-group {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .email-input {
+            flex: 1;
+        }
+        
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-send-code {
+            background: #2196F3;
+            color: white;
+            white-space: nowrap;
+        }
+        
+        .btn-send-code:hover {
+            background: #1976D2;
+        }
+        
+        .btn-submit {
+            width: 100%;
+            background: #4CAF50;
+            color: white;
+            margin-top: 10px;
+        }
+        
+        .btn-submit:hover {
+            background: #45a049;
+        }
+        
+        .message {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+            display: none;
+        }
+        
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            display: block;
+        }
+        
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            display: block;
+        }
+        
+        .info {
+            margin-top: 30px;
+            padding: 20px;
+            background: #e3f2fd;
+            border-radius: 5px;
+            font-size: 14px;
+            color: #1565C0;
+        }
+        
+        .info h3 {
+            margin-bottom: 10px;
+        }
+        
+        .info ul {
+            margin-left: 20px;
+        }
+        
+        .info li {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="register-container">
+        <h1>用户注册</h1>
+        <form id="registerForm">
+            <div class="form-group">
+                <label for="username">用户名</label>
+                <input type="text" id="username" name="username" placeholder="请输入用户名" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="email">邮箱</label>
+                <div class="email-group">
+                    <input type="email" id="email" name="email" placeholder="请输入邮箱" class="email-input" required>
+                    <button type="button" class="btn btn-send-code" onclick="sendVerificationCode()">发送验证码</button>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="code">验证码</label>
+                <input type="text" id="code" name="code" placeholder="请输入验证码" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">密码</label>
+                <input type="password" id="password" name="password" placeholder="请输入密码" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="confirmPassword">确认密码</label>
+                <input type="password" id="confirmPassword" name="confirmPassword" placeholder="请确认密码" required>
+            </div>
+            
+            <button type="submit" class="btn btn-submit">注册</button>
+        </form>
+        
+        <div id="message" class="message"></div>
+        
+        <div class="info">
+            <h3>测试说明</h3>
+            <ul>
+                <li>这是一个模拟注册页面，用于测试智能注册助手</li>
+                <li>点击"发送验证码"会触发模拟发送（实际会向临时邮箱发送测试邮件）</li>
+                <li>请安装并启用智能注册助手脚本</li>
+                <li>插件会在左上角显示控制面板</li>
+            </ul>
+        </div>
+    </div>
+    
+    <script>
+        // 模拟发送验证码
+        async function sendVerificationCode() {
+            const email = document.getElementById('email').value;
+            if (!email) {
+                showMessage('请先输入邮箱地址', 'error');
+                return;
+            }
+            
+            // 验证邮箱格式
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                showMessage('请输入有效的邮箱地址', 'error');
+                return;
+            }
+            
+            // 模拟发送验证码
+            showMessage('正在发送验证码...', 'success');
+            
+            // 生成随机验证码
+            const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+            
+            // 模拟发送邮件到临时邮箱
+            // 注意：这里只是模拟，实际测试时可以手动发送邮件到临时邮箱
+            setTimeout(() => {
+                showMessage(`验证码已发送到 ${email}（测试验证码：${verificationCode}）`, 'success');
+                console.log('测试验证码：', verificationCode);
+                
+                // 如果要真实测试，可以使用以下方式发送邮件
+                // 这需要配置邮件服务器或使用第三方API
+                console.log('提示：在实际场景中，这里会调用后端API发送真实邮件');
+            }, 1000);
+        }
+        
+        // 显示消息
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = text;
+            messageDiv.className = `message ${type}`;
+        }
+        
+        // 表单提交
+        document.getElementById('registerForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = {};
+            for (let [key, value] of formData) {
+                data[key] = value;
+            }
+            
+            // 验证密码是否一致
+            if (data.password !== data.confirmPassword) {
+                showMessage('两次输入的密码不一致', 'error');
+                return;
+            }
+            
+            // 模拟注册成功
+            showMessage('注册成功！（这是模拟结果）', 'success');
+            console.log('注册信息：', data);
+        });
+    </script>
+</body>
+</html> 
