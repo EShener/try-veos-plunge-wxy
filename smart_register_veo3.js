@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         智能注册助手 - 通用版
 // @namespace    http://tampermonkey.net/
-// @version      5.1
+// @version      5.7
 // @description  智能注册助手，支持多网站，集成临时邮箱系统
 // @author       AI Assistant
 // @match        https://*/*
@@ -480,7 +480,9 @@
                 
                 // 邮箱输入框
                 if (placeholder.includes('邮箱') || placeholder.includes('邮件') || 
+                    placeholder.includes('邮件地址') || placeholder.includes('电子邮件') ||
                     placeholder.includes('email') || placeholder.includes('mail') ||
+                    placeholder.includes('e-mail') || placeholder.includes('电邮') ||
                     type === 'email' || name.includes('email') || name.includes('mail')) {
                     elements.email = input;
                     console.log('识别为邮箱输入框');
@@ -652,8 +654,8 @@
                 }
             }
 
-            // 注册信息对象
-            let registerInfo = {
+            // 注册信息对象（放在更外层作用域）
+            window.registerInfo = {
                 email: '',
                 username: '',
                 password: '',
@@ -681,18 +683,49 @@
                 
                 try {
                     // 生成邮箱
-                    registerInfo.email = await getNewEmail();
-                    document.getElementById('email-display').textContent = registerInfo.email;
+                    window.window.registerInfo.email = await getNewEmail();
+                    document.getElementById('email-display').textContent = window.window.registerInfo.email;
                     
                     // 生成用户名和密码
-                    registerInfo.username = generateRandomString(8, { useSpecial: false });
-                    registerInfo.password = generateRandomString(12, { useSpecial: true });
+                    window.window.registerInfo.username = generateRandomString(8, { useSpecial: false });
+                    window.window.registerInfo.password = generateRandomString(12, { useSpecial: true });
                     
-                    document.getElementById('username-display').textContent = registerInfo.username;
-                    document.getElementById('password-display').textContent = registerInfo.password;
+                    document.getElementById('username-display').textContent = window.window.registerInfo.username;
+                    document.getElementById('password-display').textContent = window.window.registerInfo.password;
                     
                     showStatus('注册信息生成成功！', 'success');
                     document.getElementById('btn-fill').style.display = 'block';
+                    
+                    // 生成信息后，如果是自动模式，启动检测
+                    if (autoFillMode) {
+                        console.log('注册信息已生成，启动自动检测');
+                        // 先停止之前的检测（如果有的话）
+                        stopAutoDetection();
+                        // 重新启动检测
+                        startAutoDetection();
+                        
+                        // 立即执行一次检测
+                        setTimeout(() => {
+                            console.log('立即执行一次表单检测...');
+                            const allContainers = document.querySelectorAll('div, form, section, article');
+                            console.log(`找到 ${allContainers.length} 个容器`);
+                            
+                            // 手动触发一次检测
+                            window.manualCheckForm = function() {
+                                console.log('手动检测表单...');
+                                for (const container of allContainers) {
+                                    const inputs = container.querySelectorAll('input');
+                                    if (inputs.length >= 2) {
+                                        console.log('发现包含', inputs.length, '个输入框的容器');
+                                        for (const input of inputs) {
+                                            console.log('- 输入框:', input.type, input.placeholder);
+                                        }
+                                    }
+                                }
+                            };
+                            console.log('可以在控制台运行 manualCheckForm() 手动检测表单');
+                        }, 1000);
+                    }
                 } catch (error) {
                     showStatus('生成失败: ' + error.message, 'error');
                 } finally {
@@ -752,7 +785,7 @@
                     const code = await waitForVerificationCode(email);
                     
                     if (code) {
-                        registerInfo.verificationCode = code;
+                        window.registerInfo.verificationCode = code;
                         document.getElementById('code-display').textContent = code;
                         showStatus('验证码获取成功！', 'success');
                         return code;
@@ -763,22 +796,39 @@
                 }
             }
 
+            // 将自动填充函数暴露到全局，方便调试
+            window.triggerAutoFill = function() {
+                console.log('手动触发自动填充...');
+                autoFillRegistrationForm();
+            };
+            
             // 一键填充表单（按照网站流程）
             document.getElementById('btn-fill').addEventListener('click', async function() {
-                if (!registerInfo.email || !registerInfo.password) {
+                if (!window.registerInfo.email || !window.registerInfo.password) {
                     showStatus('请先生成注册信息', 'error');
                     return;
                 }
                 
                 this.disabled = true;
                 
+                // 直接调用自动填充函数
+                console.log('点击一键填充，执行自动化流程...');
+                autoFillRegistrationForm();
+                
+                // 延迟后恢复按钮
+                setTimeout(() => {
+                    this.disabled = false;
+                }, 2000);
+                
+                return; // 暂时跳过原有逻辑
+                
                 try {
                     const elements = findFormElements();
                     
                     // 步骤1: 先填充邮箱
                     showStatus('步骤1: 填充邮箱... <span class="loading"></span>', 'info');
-                    if (elements.email && registerInfo.email) {
-                        fillForm(elements.email, registerInfo.email);
+                    if (elements.email && window.registerInfo.email) {
+                        fillForm(elements.email, window.registerInfo.email);
                         await new Promise(resolve => setTimeout(resolve, 1000));
                         
                         // 步骤2: 查找并点击获取验证码按钮
@@ -792,9 +842,9 @@
                             // 步骤3: 等待并获取验证码
                             showStatus('步骤3: 等待验证码邮件（可能需要5-30秒）... <span class="loading"></span>', 'info');
                             try {
-                                const code = await waitForVerificationCode(registerInfo.email);
+                                const code = await waitForVerificationCode(window.registerInfo.email);
                                 if (code) {
-                                    registerInfo.verificationCode = code;
+                                    window.registerInfo.verificationCode = code;
                                     document.getElementById('code-display').textContent = code;
                                     console.log('成功获取验证码:', code);
                                     
@@ -844,7 +894,67 @@
             
             // 如果默认开启自动模式，立即启动检测
             if (autoFillMode) {
+                console.log('🤖 自动模式已默认开启');
                 startAutoDetection();
+                
+                // 添加DOM变化监听器，更灵敏地检测新表单
+                const observer = new MutationObserver((mutations) => {
+                    // 检查是否有新的输入框被添加
+                    for (const mutation of mutations) {
+                        if (mutation.type === 'childList') {
+                            for (const node of mutation.addedNodes) {
+                                if (node.nodeType === 1) { // Element node
+                                    const inputs = node.querySelectorAll ? node.querySelectorAll('input') : [];
+                                    if (inputs.length > 0 && window.registerInfo.email) {
+                                        console.log('🔍 检测到新的输入框被添加到页面');
+                                        // 检查是否是密码输入框
+                                        const passwordInputs = node.querySelectorAll('input[type="password"]');
+                                        if (passwordInputs.length > 0) {
+                                            console.log('🎯 发现密码输入框，可能是注册表单！');
+                                            setTimeout(() => {
+                                                autoFillRegistrationForm();
+                                            }, 500);
+                                            return;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                // 开始观察整个文档的变化
+                observer.observe(document.body, {
+                    childList: true,
+                    subtree: true
+                });
+                
+                console.log('📡 DOM变化监听器已启动');
+                
+                // 添加全局点击监听器
+                document.addEventListener('click', function(e) {
+                    if (!window.registerInfo.email) return;
+                    
+                    // 检查点击的是否是可能触发注册表单的按钮
+                    const target = e.target;
+                    const text = (target.textContent || target.innerText || '').toLowerCase();
+                    
+                    if (text.includes('注册') || text.includes('sign up') || 
+                        text.includes('register') || text.includes('加入')) {
+                        console.log('👆 点击了可能的注册按钮:', text);
+                        
+                        // 延迟检查是否出现了注册表单
+                        setTimeout(() => {
+                            const passwordInputs = document.querySelectorAll('input[type="password"]:not(#smart-register-panel input)');
+                            if (passwordInputs.length >= 2) {
+                                console.log('🎯 检测到注册表单出现！');
+                                autoFillRegistrationForm();
+                            }
+                        }, 1000);
+                    }
+                });
+                
+                console.log('👆 点击事件监听器已启动');
             }
             
             // 自动检测注册框
@@ -853,49 +963,90 @@
             function startAutoDetection() {
                 if (detectionInterval) return;
                 
+                console.log('启动自动检测...');
                 detectionInterval = setInterval(() => {
-                    if (!autoFillMode || !registerInfo.email) return;
+                    if (!autoFillMode) {
+                        console.log('自动模式未开启');
+                        return;
+                    }
+                    if (!window.registerInfo.email) {
+                        return;
+                    }
                     
-                    // 查找可能的注册表单
-                    const forms = document.querySelectorAll('form, [role="dialog"], .modal, .popup, [class*="register"], [class*="signup"]');
+                    // 检测注册表单的特征
+                    let foundRegistrationForm = false;
                     
-                    for (const form of forms) {
-                        const rect = form.getBoundingClientRect();
-                        const isVisible = rect.width > 0 && rect.height > 0 && 
-                                        window.getComputedStyle(form).display !== 'none';
+                    // 方法1: 检测确认密码输入框
+                    const confirmPasswordInputs = document.querySelectorAll('input[type="password"]');
+                    if (confirmPasswordInputs.length >= 2) {
+                        console.log('🎯 检测到多个密码输入框（可能是确认密码）');
+                        foundRegistrationForm = true;
+                    }
+                    
+                    // 方法2: 检测包含"欢迎加入"等注册相关文字的元素
+                    const registrationKeywords = ['欢迎加入', '创建账户', '注册', '立即注册', '创建帐户', 'sign up', 'create account', 'register'];
+                    const allTexts = document.body.innerText.toLowerCase();
+                    for (const keyword of registrationKeywords) {
+                        if (allTexts.includes(keyword.toLowerCase())) {
+                            console.log(`🎯 检测到注册关键词: "${keyword}"`);
+                            foundRegistrationForm = true;
+                            break;
+                        }
+                    }
+                    
+                    // 方法3: 检测包含邮箱、密码、确认密码的表单
+                    const allInputs = document.querySelectorAll('input:not(#smart-register-panel input)');
+                    let hasEmailInput = false;
+                    let hasPasswordInput = false;
+                    let hasConfirmPasswordInput = false;
+                    
+                    for (const input of allInputs) {
+                        if (input.offsetWidth === 0 || input.offsetHeight === 0) continue;
                         
-                        if (isVisible) {
-                            // 检查表单是否包含邮箱和密码输入框
-                            let hasEmailInput = false;
-                            let hasPasswordInput = false;
-                            
-                            const inputs = form.querySelectorAll('input');
-                            for (const input of inputs) {
-                                const type = input.type;
-                                const placeholder = (input.placeholder || '').toLowerCase();
-                                const name = (input.name || '').toLowerCase();
-                                
-                                if (type === 'email' || placeholder.includes('email') || 
-                                    placeholder.includes('邮箱') || name.includes('email')) {
-                                    hasEmailInput = true;
-                                }
-                                
-                                if (type === 'password') {
-                                    hasPasswordInput = true;
-                                }
-                            }
-                            
-                            if (hasEmailInput && hasPasswordInput) {
-                                // 检查是否是新表单
-                                const formId = form.innerHTML.substring(0, 100);
-                                if (formId !== lastFilledFormId) {
-                                    console.log('检测到新的注册表单，开始自动填充...');
-                                    lastFilledFormId = formId;
-                                    autoFillRegistrationForm();
-                                    break;
-                                }
+                        const type = input.type || 'text';
+                        const placeholder = (input.placeholder || '').toLowerCase();
+                        const name = (input.name || '').toLowerCase();
+                        
+                        // 检测邮箱
+                        if (type === 'email' || placeholder.includes('邮') || placeholder.includes('email') || 
+                            placeholder.includes('mail') || name.includes('email')) {
+                            hasEmailInput = true;
+                        }
+                        
+                        // 检测密码
+                        if (type === 'password') {
+                            if (placeholder.includes('确认') || placeholder.includes('再次') || 
+                                placeholder.includes('confirm') || placeholder.includes('retype') ||
+                                name.includes('confirm') || name.includes('password2')) {
+                                hasConfirmPasswordInput = true;
+                            } else {
+                                hasPasswordInput = true;
                             }
                         }
+                    }
+                    
+                    if (hasEmailInput && hasPasswordInput && hasConfirmPasswordInput) {
+                        console.log('🎯 检测到完整的注册表单（邮箱+密码+确认密码）');
+                        foundRegistrationForm = true;
+                    }
+                    
+                    // 如果检测到注册表单，执行自动填充
+                    if (foundRegistrationForm) {
+                        const currentFormId = document.body.innerHTML.substring(0, 200);
+                        if (currentFormId !== lastFilledFormId) {
+                            console.log('📝 这是一个新的注册表单，开始自动填充...');
+                            lastFilledFormId = currentFormId;
+                            
+                            // 延迟执行，确保表单完全加载
+                            setTimeout(() => {
+                                autoFillRegistrationForm();
+                            }, 1000);
+                        }
+                    }
+                    
+                    // 每30秒输出一次状态，避免刷屏
+                    if (!foundRegistrationForm && Date.now() % 30000 < 1000) {
+                        console.log('⏳ 自动检测运行中...');
                     }
                 }, 1000); // 每秒检测一次
             }
@@ -907,9 +1058,12 @@
                 }
             }
             
+
+            
             // 自动填充注册表单
             async function autoFillRegistrationForm() {
-                console.log('检测到注册框，开始自动填充...');
+                console.log('🚀 开始自动化注册流程...');
+                showStatus('自动填充中...', 'info');
                 
                 // 添加一个检测器，检查表单是否已填充完整
                 let formCompletionChecker = null;
@@ -917,59 +1071,74 @@
                 try {
                     const elements = findFormElements();
                     if (!elements.email) {
-                        console.log('未找到邮箱输入框');
+                        console.log('❌ 未找到邮箱输入框');
                         return;
                     }
                     
                     // 步骤1: 填充基本信息
-                    if (elements.email && registerInfo.email) {
-                        fillForm(elements.email, registerInfo.email);
+                    console.log('📝 步骤1: 填充基本信息');
+                    if (elements.email && window.registerInfo.email) {
+                        fillForm(elements.email, window.registerInfo.email);
+                        console.log('✅ 已填充邮箱');
                     }
-                    if (elements.userId && registerInfo.username) {
-                        fillForm(elements.userId, registerInfo.username);
+                    if (elements.userId && window.registerInfo.username) {
+                        fillForm(elements.userId, window.registerInfo.username);
+                        console.log('✅ 已填充用户名');
                     }
-                    if (elements.password && registerInfo.password) {
-                        fillForm(elements.password, registerInfo.password);
+                    if (elements.password && window.registerInfo.password) {
+                        fillForm(elements.password, window.registerInfo.password);
+                        console.log('✅ 已填充密码');
                     }
-                    if (elements.confirmPassword && registerInfo.password) {
-                        fillForm(elements.confirmPassword, registerInfo.password);
+                    if (elements.confirmPassword && window.registerInfo.password) {
+                        fillForm(elements.confirmPassword, window.registerInfo.password);
+                        console.log('✅ 已填充确认密码');
                     }
                     
+                    // 给表单一点时间响应
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    
                     // 步骤2: 自动点击获取验证码
+                    console.log('🔍 步骤2: 查找并点击获取验证码按钮');
                     const sendBtn = findSendCodeButton();
                     if (sendBtn) {
-                        console.log('找到获取验证码按钮，自动点击');
+                        console.log('✅ 找到获取验证码按钮，自动点击');
                         sendBtn.click();
                         
                         showStatus('请完成人机验证（如有）', 'info');
                         
                         // 步骤3: 启动表单完整性检测
+                        console.log('⏰ 步骤3: 启动表单完整性检测，等待验证码填充...');
                         formCompletionChecker = setInterval(() => {
                             const currentElements = findFormElements();
                             if (currentElements.verificationCode && currentElements.verificationCode.value) {
-                                console.log('检测到验证码已填充，准备自动提交...');
+                                console.log('✅ 检测到验证码已填充！');
                                 clearInterval(formCompletionChecker);
                                 
                                 // 延迟一下再点击提交，确保表单状态更新
                                 setTimeout(() => {
+                                    console.log('🎯 查找注册按钮...');
                                     const submitBtn = findSubmitButton();
                                     if (submitBtn) {
-                                        console.log('找到注册按钮，自动点击');
+                                        console.log('✅ 找到注册按钮，自动点击！');
+                                        showStatus('正在自动提交注册...', 'info');
                                         submitBtn.click();
-                                        showStatus('✅ 已自动提交注册！', 'success');
+                                        setTimeout(() => {
+                                            showStatus('✅ 已自动提交注册！', 'success');
+                                        }, 1000);
                                     } else {
+                                        console.log('❌ 未找到注册按钮');
                                         showStatus('未找到注册按钮，请手动提交', 'info');
                                     }
-                                }, 500);
+                                }, 1000); // 给一秒时间确保表单状态更新
                             }
                         }, 1000); // 每秒检查一次
                         
                         // 步骤4: 等待验证码
                         setTimeout(async () => {
                             try {
-                                const code = await waitForVerificationCode(registerInfo.email);
+                                const code = await waitForVerificationCode(window.registerInfo.email);
                                 if (code) {
-                                    registerInfo.verificationCode = code;
+                                    window.registerInfo.verificationCode = code;
                                     document.getElementById('code-display').textContent = code;
                                     
                                     // 填充验证码
