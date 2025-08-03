@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         智能注册助手 - 通用版
 // @namespace    http://tampermonkey.net/
-// @version      5.7
+// @version      5.8
 // @description  智能注册助手，支持多网站，集成临时邮箱系统
 // @author       AI Assistant
 // @match        https://*/*
@@ -32,10 +32,12 @@
         const shouldAutoLoad = autoLoadSites.some(site => currentHost.includes(site));
         
         // 如果不是自动加载的网站，显示启动按钮
-        if (!shouldAutoLoad) {
-            createLaunchButton();
-            return;
-        }
+        // if (!shouldAutoLoad) {
+        //     createLaunchButton();
+        //     return;
+        // }
+        
+        // 现在所有网站都直接加载插件面板，不显示悬浮按钮
         
         // 配置
         const CONFIG = {
