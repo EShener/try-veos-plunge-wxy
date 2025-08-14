@@ -1167,16 +1167,24 @@
                     if (window.location.hostname.includes('topmediai')) {
                         console.log('检测到TopMediAI网站，使用特殊处理流程');
                         
-                        // 1. top查找并填充邮箱输入框
-                        const emailInput = document.evaluate('/html/body/div[4]/div/div[2]/div/div/div/div/div/div[2]/div[2]/div[2]/form/div[1]/div/div[1]/div/input', document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                        // 声明成功标志变量
+                        let emailSuccess = false;
+                        let passwordSuccess = false;
+                        
+                        // 1. 查找并填充邮箱输入框 - 使用更精确的选择器
+                        const emailInput = document.querySelector('input.el-input__inner[placeholder="輸入註冊的電子郵件帳號"][data-logic-attached="true"]');
+                        console.log('找到邮箱输入框:', emailInput);
+                        
                         if (!emailInput) {
                             console.log('未找到邮箱输入框');
                             showStatus('未找到邮箱输入框', 'error');
                             return;
                         }
 
-                        // 2. top查找并填充密码输入框
-                        const passwordInput = document.evaluate('/html/body/div[4]/div/div[2]/div/div/div/div/div/div[2]/div[2]/div[2]/form/div[2]/div/div[1]/div/input', document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                        // 2. 查找并填充密码输入框
+                        const passwordInput = document.querySelector('input.el-input__inner[placeholder="密碼"]:not([modelmodifiers])');
+                        console.log('找到密码输入框:', passwordInput);
+                        
                         if (!passwordInput) {
                             console.log('未找到密码输入框');
                             showStatus('未找到密码输入框', 'error');
@@ -1184,27 +1192,25 @@
                         }
 
                         // 3. 填充邮箱
-                        console.log('开始填充邮箱');
-                        let emailSuccess = false;
+                        console.log('开始填充邮箱:', window.registerInfo.email);
                         try {
-                            // 确保输入框可交互
+                            // 先聚焦
                             emailInput.focus();
                             await new Promise(resolve => setTimeout(resolve, 100));
-
-                            // 尝试Element UI方式
-                            const emailElementUI = emailInput.closest('.el-input');
-                            if (emailElementUI && emailElementUI.__vue__) {
-                                emailElementUI.__vue__.$emit('input', window.registerInfo.email);
-                                emailElementUI.__vue__.$emit('change', window.registerInfo.email);
-                                await new Promise(resolve => setTimeout(resolve, 100));
-                            }
-
+                            
                             // 直接设置值
                             emailInput.value = window.registerInfo.email;
-                            emailInput.dispatchEvent(new Event('input', { bubbles: true }));
-                            emailInput.dispatchEvent(new Event('change', { bubbles: true }));
-
+                            
+                            // 触发所有可能的事件
+                            const events = ['input', 'change', 'blur'];
+                            events.forEach(eventType => {
+                                emailInput.dispatchEvent(new Event(eventType, { bubbles: true }));
+                            });
+                            
+                            // 验证值是否设置成功
+                            await new Promise(resolve => setTimeout(resolve, 100));
                             emailSuccess = emailInput.value === window.registerInfo.email;
+                            console.log('邮箱填充结果:', emailSuccess, emailInput.value);
                         } catch (e) {
                             console.log('邮箱填充失败:', e);
                         }
@@ -1216,27 +1222,25 @@
                         }
 
                         // 4. 填充密码
-                        console.log('开始填充密码');
-                        let passwordSuccess = false;
+                        console.log('开始填充密码:', window.registerInfo.password);
                         try {
-                            // 确保输入框可交互
+                            // 先聚焦
                             passwordInput.focus();
                             await new Promise(resolve => setTimeout(resolve, 100));
-
-                            // 尝试Element UI方式
-                            const passwordElementUI = passwordInput.closest('.el-input');
-                            if (passwordElementUI && passwordElementUI.__vue__) {
-                                passwordElementUI.__vue__.$emit('input', window.registerInfo.password);
-                                passwordElementUI.__vue__.$emit('change', window.registerInfo.password);
-                                await new Promise(resolve => setTimeout(resolve, 100));
-                            }
-
+                            
                             // 直接设置值
                             passwordInput.value = window.registerInfo.password;
-                            passwordInput.dispatchEvent(new Event('input', { bubbles: true }));
-                            passwordInput.dispatchEvent(new Event('change', { bubbles: true }));
-
+                            
+                            // 触发所有可能的事件
+                            const events = ['input', 'change', 'blur'];
+                            events.forEach(eventType => {
+                                passwordInput.dispatchEvent(new Event(eventType, { bubbles: true }));
+                            });
+                            
+                            // 验证值是否设置成功
+                            await new Promise(resolve => setTimeout(resolve, 100));
                             passwordSuccess = passwordInput.value === window.registerInfo.password;
+                            console.log('密码填充结果:', passwordSuccess, passwordInput.value);
                         } catch (e) {
                             console.log('密码填充失败:', e);
                         }
@@ -1251,11 +1255,14 @@
                         if (emailSuccess && passwordSuccess) {
                             console.log('邮箱和密码填充成功，准备点击创建账户按钮');
                             
-                            // 查找创建账户按钮
-                            const createButton = document.evaluate('/html/body/div[4]/div/div[2]/div/div/div/div/div/div[2]/div[2]/div[2]/form/div[3]/div/button', document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-                            if (createButton && createButton.offsetWidth > 0 && !createButton.disabled) {
+                            // 查找创建账户按钮 - 使用精确的选择器
+                            const submitButton = Array.from(document.querySelectorAll('button.el-button.el-button--primary.login-btn'))
+                                .find(btn => btn.textContent.includes('創建帳戶')) || 
+                                document.querySelector('button.el-button.el-button--primary.login-btn');
+                                                   
+                            if (submitButton && submitButton.offsetWidth > 0 && !submitButton.disabled) {
                                 console.log('找到创建账户按钮，准备点击');
-                                createButton.click();
+                                submitButton.click();
                                 console.log('已点击创建账户按钮');
                                 showStatus('已发送创建账户请求，等待验证码...', 'info');
 
@@ -1264,51 +1271,92 @@
                                 const maxRetries = 30; // 最多等待30秒
                                 const checkVerificationCode = setInterval(async () => {
                                     try {
-                                        // 调用API获取验证码
-                                        const response = await fetch(`http://159.75.188.43/tempmail/api/v1/mailbox/${window.registerInfo.email}`);
-                                        const data = await response.json();
+                                        // 使用 GM_xmlhttpRequest 获取验证码
+                                        const response = await new Promise((resolve, reject) => {
+                                            GM_xmlhttpRequest({
+                                                method: 'GET',
+                                                url: `http://159.75.188.43/tempmail/api/emails/${window.registerInfo.email}`,
+                                                headers: {
+                                                    'Content-Type': 'application/json',
+                                                    'X-User-ID': document.getElementById('user-id-input')?.value?.trim() || CONFIG.ALLOWED_USER
+                                                },
+                                                onload: function(response) {
+                                                    resolve(response);
+                                                },
+                                                onerror: function(error) {
+                                                    console.error('获取验证码失败:', error);
+                                                    reject(new Error('获取验证码失败，请检查网络连接'));
+                                                }
+                                            });
+                                        });
+
+                                        const data = JSON.parse(response.responseText);
+                                        console.log('收到邮件数据:', data);
                                         
-                                        if (data && data.length > 0) {
+                                        if (data && data.success && data.data && Array.isArray(data.data)) {
                                             // 找到最新的邮件
-                                            const latestMail = data[0];
-                                            // 从邮件内容中提取验证码
-                                            const verificationCode = latestMail.text.match(/\d{6}/)?.[0];
-                                            
-                                            if (verificationCode) {
-                                                clearInterval(checkVerificationCode);
-                                                console.log('获取到验证码:', verificationCode);
-                                                
-                                                // 找到验证码输入框并填充
-                                                const codeInputs = document.querySelectorAll('input[type="text"]');
-                                                const verificationInputs = Array.from(codeInputs).filter(input => {
-                                                    const rect = input.getBoundingClientRect();
-                                                    return rect.width > 0 && rect.height > 0;
-                                                });
-
-                                                if (verificationInputs.length === 6) {
-                                                    console.log('找到验证码输入框，开始填充');
-                                                    // 逐个填充验证码
-                                                    for (let i = 0; i < verificationCode.length; i++) {
-                                                        const input = verificationInputs[i];
-                                                        input.value = verificationCode[i];
-                                                        input.dispatchEvent(new Event('input', { bubbles: true }));
-                                                        input.dispatchEvent(new Event('change', { bubbles: true }));
-                                                        await new Promise(resolve => setTimeout(resolve, 100));
+                                            const emails = data.data;
+                                            for (const email of emails) {
+                                                // 检查是否是验证码邮件
+                                                if (email.subject && email.subject.includes('Verification')) {
+                                                    console.log('找到验证码邮件:', email);
+                                                    
+                                                    // 从verificationCodes中提取验证码
+                                                    const verificationCode = email.verificationCodes && 
+                                                                          Array.isArray(email.verificationCodes) && 
+                                                                          email.verificationCodes.length > 0 ? 
+                                                                          email.verificationCodes[0].code : null;
+                                                    
+                                                    if (verificationCode) {
+                                                        clearInterval(checkVerificationCode);
+                                                        console.log('获取到验证码:', verificationCode);
+                                                        
+                                                        // 找到验证码输入框的父容器
+                                                        const codeContainer = document.evaluate('/html/body/div[4]/div/div[2]/div/div/div/div/div/div[2]/div[2]/div[1]/div/div[1]', document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                                                        if (codeContainer) {
+                                                            console.log('找到验证码输入框容器');
+                                                            
+                                                            // 获取所有输入框
+                                                            const inputs = codeContainer.querySelectorAll('input');
+                                                            if (inputs.length === 6) {
+                                                                console.log('找到6个验证码输入框，开始填充');
+                                                                
+                                                                // 逐个填充验证码
+                                                                for (let i = 0; i < verificationCode.length; i++) {
+                                                                    const input = inputs[i];
+                                                                    // 确保输入框可交互
+                                                                    input.focus();
+                                                                    // 设置值
+                                                                    input.value = verificationCode[i];
+                                                                    // 触发必要的事件
+                                                                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                                                                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                                                                    // 等待一小段时间再填充下一个
+                                                                    await new Promise(resolve => setTimeout(resolve, 100));
+                                                                }
+                                                                
+                                                                // 等待所有输入框填充完成
+                                                                await new Promise(resolve => setTimeout(resolve, 500));
+                                                                
+                                                                // 查找并点击继续按钮
+                                                                const nextButton = document.evaluate('/html/body/div[4]/div/div[2]/div/div/div/div/div/div[2]/div[2]/div[1]/div/button', document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                                                                if (nextButton) {
+                                                                    console.log('找到继续按钮，准备点击');
+                                                                    nextButton.click();
+                                                                    showStatus('验证码填充完成', 'success');
+                                                                } else {
+                                                                    console.log('未找到继续按钮');
+                                                                    showStatus('未找到继续按钮', 'error');
+                                                                }
+                                                            } else {
+                                                                console.log('未找到正确数量的验证码输入框');
+                                                                showStatus('未找到验证码输入框', 'error');
+                                                            }
+                                                        } else {
+                                                            console.log('未找到验证码输入框容器');
+                                                            showStatus('未找到验证码输入框', 'error');
+                                                        }
                                                     }
-
-                                                    // 查找并点击继续按钮
-                                                    const continueButton = document.querySelector('button.el-button:not(.login-btn)');
-                                                    if (continueButton) {
-                                                        console.log('找到继续按钮，准备点击');
-                                                        continueButton.click();
-                                                        showStatus('验证码填充完成', 'success');
-                                                    } else {
-                                                        console.log('未找到继续按钮');
-                                                        showStatus('未找到继续按钮', 'error');
-                                                    }
-                                                } else {
-                                                    console.log('未找到正确的验证码输入框');
-                                                    showStatus('未找到验证码输入框', 'error');
                                                 }
                                             }
                                         }
