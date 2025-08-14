@@ -1157,6 +1157,7 @@
 
 
 
+            
             // 自动填充注册表单
             async function autoFillRegistrationForm() {
                 console.log('🚀 开始自动化注册流程...');
@@ -1167,7 +1168,7 @@
                         console.log('检测到TopMediAI网站，使用特殊处理流程');
                         
                         // 1. top查找并填充邮箱输入框
-                        const emailInput = document.querySelector('#el-id-1024-70');
+                        const emailInput = document.evaluate('/html/body/div[4]/div/div[2]/div/div/div/div/div/div[2]/div[2]/div[2]/form/div[1]/div/div[1]/div/input', document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
                         if (!emailInput) {
                             console.log('未找到邮箱输入框');
                             showStatus('未找到邮箱输入框', 'error');
@@ -1175,7 +1176,7 @@
                         }
 
                         // 2. top查找并填充密码输入框
-                        const passwordInput = document.querySelector('#el-id-1024-71');
+                        const passwordInput = document.evaluate('/html/body/div[4]/div/div[2]/div/div/div/div/div/div[2]/div[2]/div[2]/form/div[2]/div/div[1]/div/input', document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
                         if (!passwordInput) {
                             console.log('未找到密码输入框');
                             showStatus('未找到密码输入框', 'error');
@@ -1251,7 +1252,7 @@
                             console.log('邮箱和密码填充成功，准备点击创建账户按钮');
                             
                             // 查找创建账户按钮
-                            const createButton = document.querySelector('button.el-button.el-button--primary.login-btn');
+                            const createButton = document.evaluate('/html/body/div[4]/div/div[2]/div/div/div/div/div/div[2]/div[2]/div[2]/form/div[3]/div/button', document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
                             if (createButton && createButton.offsetWidth > 0 && !createButton.disabled) {
                                 console.log('找到创建账户按钮，准备点击');
                                 createButton.click();
