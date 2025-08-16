@@ -1171,22 +1171,88 @@
                         let emailSuccess = false;
                         let passwordSuccess = false;
                         
-                        // 1. 查找并填充邮箱输入框 - 使用更精确的选择器
-                        const emailInput = document.querySelector('input.el-input__inner[placeholder="輸入註冊的電子郵件帳號"][data-logic-attached="true"]');
-                        console.log('找到邮箱输入框:', emailInput);
+                        // 1. 查找并填充邮箱输入框
+                        const emailInputs = document.querySelectorAll('input.el-input__inner[placeholder="輸入註冊的電子郵件帳號"]');
+                        console.log('找到邮箱输入框数量:', emailInputs.length);
+                        
+                        // 使用试探法找出真正可用的邮箱输入框
+                        let emailInput = null;
+                        for (const input of emailInputs) {
+                            try {
+                                // 保存原始值
+                                const originalValue = input.value;
+                                
+                                // 尝试输入
+                                input.focus();
+                                await new Promise(resolve => setTimeout(resolve, 100));
+                                
+                                // 先清空值
+                                input.value = '';
+                                input.dispatchEvent(new Event('input', { bubbles: true }));
+                                await new Promise(resolve => setTimeout(resolve, 100));
+                                
+                                // 尝试输入一个值
+                                input.value = 'test';
+                                input.dispatchEvent(new Event('input', { bubbles: true }));
+                                await new Promise(resolve => setTimeout(resolve, 100));
+                                
+                                // 检查值是否被接受，以及输入框是否仍然可见和可交互
+                                const rect = input.getBoundingClientRect();
+                                if (input.value === 'test' && 
+                                    rect.width > 0 && 
+                                    rect.height > 0 && 
+                                    !input.disabled && 
+                                    !input.readOnly &&
+                                    window.getComputedStyle(input).display !== 'none' &&
+                                    window.getComputedStyle(input).visibility !== 'hidden') {
+                                    
+                                    console.log('找到可用的邮箱输入框:', input);
+                                    emailInput = input;
+                                    
+                                    // 恢复原始值
+                                    input.value = originalValue;
+                                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                                    break;
+                                }
+                            } catch (e) {
+                                console.log('尝试邮箱输入框失败:', e);
+                            }
+                        }
                         
                         if (!emailInput) {
-                            console.log('未找到邮箱输入框');
+                            console.log('未找到可用的邮箱输入框');
                             showStatus('未找到邮箱输入框', 'error');
                             return;
                         }
 
                         // 2. 查找并填充密码输入框
-                        const passwordInput = document.querySelector('input.el-input__inner[placeholder="密碼"]:not([modelmodifiers])');
-                        console.log('找到密码输入框:', passwordInput);
+                        const passwordInputs = document.querySelectorAll('input.el-input__inner[placeholder="密碼"]:not([modelmodifiers])');
+                        console.log('找到密码输入框数量:', passwordInputs.length);
+                        
+                        // 使用试探法找出真正可用的密码输入框
+                        let passwordInput = null;
+                        for (const input of passwordInputs) {
+                            try {
+                                const originalValue = input.value;
+                                input.focus();
+                                input.value = 'testpass';
+                                input.dispatchEvent(new Event('input', { bubbles: true }));
+                                await new Promise(resolve => setTimeout(resolve, 100));
+                                
+                                if (input.value === 'testpass') {
+                                    console.log('找到可用的密码输入框:', input);
+                                    passwordInput = input;
+                                    input.value = originalValue;
+                                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                                    break;
+                                }
+                            } catch (e) {
+                                console.log('尝试密码输入框失败:', e);
+                            }
+                        }
                         
                         if (!passwordInput) {
-                            console.log('未找到密码输入框');
+                            console.log('未找到可用的密码输入框');
                             showStatus('未找到密码输入框', 'error');
                             return;
                         }
