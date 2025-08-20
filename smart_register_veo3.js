@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         智能注册助手 - 通用版
+// @name         椰椰智能注册助手
 // @namespace    http://tampermonkey.net/
-// @version      5.8
+// @version      6.1
 // @description  智能注册助手，支持多网站，集成临时邮箱系统
 // @author       AI Assistant
 // @match        http://*.veo*./*
@@ -676,7 +676,7 @@
                 <span class="panel-close" title="关闭">×</span>
                 <span class="panel-minimize" title="最小化">—</span>
                 <div class="panel-header">
-                    <h3>🤖 智能注册助手</h3>
+                    <h3>🤖 椰椰智能注册助手</h3>
                 </div>
                 <div class="panel-content">
                     <div id="status-message"></div>
@@ -1172,8 +1172,22 @@
                         let passwordSuccess = false;
                         
                         // 1. 查找并填充邮箱输入框
-                        const emailInputs = document.querySelectorAll('input.el-input__inner[placeholder="輸入註冊的電子郵件帳號"]');
+                        // 在 autoFillRegistrationForm 函数中修改邮箱输入框查找逻辑
+                        const emailPlaceholders = [
+                            '輸入註冊的電子郵件帳號',  // 繁体
+                            '輸入註冊的電子郵件帳戶',  // 简体
+                            'Enter Email Address'    // 英文版
+                        ];
+
+                        // 构建选择器
+                        const emailSelectors = emailPlaceholders
+                            .map(placeholder => `input.el-input__inner[placeholder="${placeholder}"]`)
+                            .join(', ');
+                        // const emailInputs = document.querySelectorAll('input.el-input__inner[placeholder="輸入註冊的電子郵件帳號"]');
+                        const emailInputs = document.querySelectorAll(emailSelectors);
                         console.log('找到邮箱输入框数量:', emailInputs.length);
+
+
                         
                         // 使用试探法找出真正可用的邮箱输入框
                         let emailInput = null;
@@ -1323,7 +1337,7 @@
                             
                             // 查找创建账户按钮 - 使用精确的选择器
                             const submitButton = Array.from(document.querySelectorAll('button.el-button.el-button--primary.login-btn'))
-                                .find(btn => btn.textContent.includes('創建帳戶')) || 
+                                .find(btn => btn.textContent.includes('創建帳戶') || btn.textContent.includes('建立帳戶')) || 
                                 document.querySelector('button.el-button.el-button--primary.login-btn');
                                                    
                             if (submitButton && submitButton.offsetWidth > 0 && !submitButton.disabled) {
@@ -1378,7 +1392,14 @@
                                                         console.log('获取到验证码:', verificationCode);
                                                         
                                                         // 找到验证码输入框的父容器
-                                                        const codeContainer = document.evaluate('/html/body/div[4]/div/div[2]/div/div/div/div/div/div[2]/div[2]/div[1]/div/div[1]', document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                                                        let codeContainer = document.evaluate('/html/body/div[4]/div/div[2]/div/div/div/div/div/div[2]/div[2]/div[1]/div/div[1]', document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                                                        
+                                                        // 如果XPath方式找不到，尝试使用class选择器
+                                                        if (!codeContainer) {
+                                                            codeContainer = document.querySelector('.verification-inputs');
+                                                        }
+                                                        console.log('验证码输入框容器:', codeContainer);
+
                                                         if (codeContainer) {
                                                             console.log('找到验证码输入框容器');
                                                             
@@ -1405,7 +1426,15 @@
                                                                 await new Promise(resolve => setTimeout(resolve, 500));
                                                                 
                                                                 // 查找并点击继续按钮
-                                                                const nextButton = document.evaluate('/html/body/div[4]/div/div[2]/div/div/div/div/div/div[2]/div[2]/div[1]/div/button', document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                                                                const nextButton = document.evaluate('/html/body/div[4]/div/div[2]/div/div/div/div/div/div[2]/div[2]/div[1]/div/button', document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue ||
+                                                                // 增加备用查找方式
+                                                                Array.from(document.querySelectorAll('button.el-button.el-button--primary.login-btn'))
+                                                                    .find(btn => {
+                                                                        const text = (btn.textContent || '').trim();
+                                                                        return text === '继续' || text === '繼續' || text === '下一步';
+                                                                    });
+                                                                console.log('继续按钮:', nextButton);
+
                                                                 if (nextButton) {
                                                                     console.log('找到继续按钮，准备点击');
                                                                     nextButton.click();
